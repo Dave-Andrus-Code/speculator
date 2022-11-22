@@ -151,7 +151,7 @@ for file in os.listdir():
                                 w.emails,\
                                 country]
                 if dcounter > 30:
-                    print('Writing', file)
+                    print('Writing', file, domain)
                     with open(file, 'w') as f:
                         f.write(json.dumps(data))
                     dcounter = 0
