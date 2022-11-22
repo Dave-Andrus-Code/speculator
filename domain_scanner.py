@@ -117,20 +117,26 @@ for file in os.listdir():
             expiration_date = ''
             country = ''
 
+            skip_domain = ''
 
             try:
                 if data[domain][3] != '':
                     skip_domain = True
                     dexp = datetime.strptime(data[domain][3], "%Y-%m-%d")
-            except:
-                # The expiration hasn't been found; we need to look up this domain
+            except IndexError as ie:
+                # The index doesn't exist -- it has never been checked
                 skip_domain = False
                 dexp = ''
+            except Exception as e:
+                print(domain, e, type(e))
+
+
 
             if not skip_domain:
                 try:
                     # happy path, if WHOIS returns a domain that is registered
                     w = whois.whois(domain)
+                    print(w)
                     if w.domain_name == 'None' or not w.domain_name:
                         # do nothing yet
                         pass
@@ -150,6 +156,7 @@ for file in os.listdir():
                                 expiration_date,\
                                 w.emails,\
                                 country]
+                print (data[domain])
                 if dcounter > 30:
                     print('Writing', file, domain)
                     with open(file, 'w') as f:
