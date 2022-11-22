@@ -1,6 +1,7 @@
 
 import whois, os, json
 from datetime import date
+from datetime import datetime
 
 def last(arg):
     # returns the last element in a list or the value of the string passed
@@ -116,30 +117,41 @@ for file in os.listdir():
             expiration_date = ''
             country = ''
 
-            try:
-                # happy path, if WHOIS returns a domain that is registered
-                w = whois.whois(domain)
-                if w.domain_name == 'None' or not w.domain_name:
-                    # do nothing yet
-                    pass
-                else:
-                    registrar = last(w.registrar)
-                    creation_date = last(w.creation_date)
-                    updated_date = last(w.updated_date)
-                    expiration_date = last(w.expiration_date)
-                    country = last(w.country)
-            except:
-                # if a domain is not registered, just move on
-                pass
 
-            data[domain] = [check_date,\
-                            registrar,\
-                            creation_date,\
-                            expiration_date,\
-                            w.emails,\
-                            country]
-            if dcounter > 30:
-                print('Writing', file)
-                with open(file, 'w') as f:
-                    f.write(json.dumps(data))
-                dcounter = 0
+            try:
+                if data[domain][3] != '':
+                    skip_domain = True
+                    dexp = datetime.strptime(data[domain][3], "%Y-%m-%d")
+            except:
+                # The expiration hasn't been found; we need to look up this domain
+                skip_domain = False
+                dexp = ''
+
+            if not skip_domain:
+                try:
+                    # happy path, if WHOIS returns a domain that is registered
+                    w = whois.whois(domain)
+                    if w.domain_name == 'None' or not w.domain_name:
+                        # do nothing yet
+                        pass
+                    else:
+                        registrar = last(w.registrar)
+                        creation_date = last(w.creation_date)
+                        updated_date = last(w.updated_date)
+                        expiration_date = last(w.expiration_date)
+                        country = last(w.country)
+                except:
+                    # if a domain is not registered, just move on
+                    pass
+
+                data[domain] = [check_date,\
+                                registrar,\
+                                creation_date,\
+                                expiration_date,\
+                                w.emails,\
+                                country]
+                if dcounter > 30:
+                    print('Writing', file)
+                    with open(file, 'w') as f:
+                        f.write(json.dumps(data))
+                    dcounter = 0

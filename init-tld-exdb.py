@@ -84,6 +84,7 @@ TLDS = [
     'WIN',
     'STORE',
     'SPACE',
+    'DOWNLOAD',
     'ES',
     'IT',
     'WORK',
