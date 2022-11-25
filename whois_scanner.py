@@ -136,7 +136,6 @@ for file in os.listdir():
                 try:
                     # happy path, if WHOIS returns a domain that is registered
                     w = whois.whois(domain)
-                    print(w)
                     if w.domain_name == 'None' or not w.domain_name:
                         # do nothing yet
                         pass

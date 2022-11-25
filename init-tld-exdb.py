@@ -9,6 +9,7 @@
 # -----------------------------------------------------
 
 import json
+from os.path import exists
 
 # -----------------------------------------------------
 # FUNCTIONS
@@ -40,9 +41,41 @@ def FilterDomain(w1, w2, w3):
     # If we made it this far, it's OK
     return True
 
+def readczds(tld):
+    # Read a zone file and return a dictionary object of unique domains
+    dfn = 'e:\\data\\domain\\' + tld + '.dict'
+    zfn = 'e:\\data\\domain\\' + tld + '.txt'
+
+    # Initialize an empty dictionary that we can return no matter what
+    dict = {}
+
+    if exists(dfn):
+        # get the dictionary if it has already been created previously
+        print ('Loading dictionary ', dfn)
+        with open(dfn, 'r') as f:
+            dict = json.loads(f.read())
+    else:
+        if exists(zfn):
+            # If the zone dictionary doesn't already exist, try to create one
+            # from the DNS zone file
+            with open(zfn, 'r') as f:
+                z = f.readlines()
+            for x in z:
+                xs = x.replace('\t', ' ').split(' ')
+                if xs[0][-1:] == '.':
+                    xs[0] = xs[0][:len(xs[0])-1]
+                dict[xs[0]] = 1
+            print('Writing dictionary ', dfn)
+            with open(dfn, 'w') as f:
+                f.write(json.dumps(dict))
+    return dict
+
 # -----------------------------------------------------
 # MAIN
 # -----------------------------------------------------
+
+readczds('cloud')
+quit()
 
 pdoms = {}      # potential domains words; single english words and
                 # multi-word combos made up of 3 words or less
@@ -133,7 +166,7 @@ TLDS = [
 with open("uniquewords_english.json", 'r') as f:
     wl_dict = json.loads(f.read())
 
-# Note:  We're omitting TLD's right now
+
 
 # single word domains
 print ('Calculating single word domains')
@@ -165,7 +198,7 @@ for x in wl_dict:
             w2 = y.replace(' ', '')
             w3 = z.replace(' ', '')
             if FilterDomain(w1, w2, w3):
-                pdoms[w1 + w2 + w3] = []
+                pdoms[w1 + w2 + w3] =  []
                 pdoms[w1 + '-' + w2 + '-' + w3] = []
 
 for t in TLDS:
@@ -174,7 +207,8 @@ for t in TLDS:
         z = str(d)
         x = str(t).lower()
         domain = z + '.' + x
-        domains[domain] = []
+        domains[domain] = ['PingCheckDate', 'PingCheckResults', 'WhoisCheckDate', 'Registrar', 'CreateDate',
+                         'UpdateDate', 'ExprDate', 'Country']
         fn = x + '-exdb.json'
 
     with open(fn, 'w') as f:
