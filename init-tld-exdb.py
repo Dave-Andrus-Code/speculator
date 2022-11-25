@@ -10,6 +10,7 @@
 
 import json
 from os.path import exists
+from datetime import date
 
 # -----------------------------------------------------
 # FUNCTIONS
@@ -68,14 +69,13 @@ def readczds(tld):
             print('Writing dictionary ', dfn)
             with open(dfn, 'w') as f:
                 f.write(json.dumps(dict))
+        else:
+            print ('No zone data for ', tld)
     return dict
 
 # -----------------------------------------------------
 # MAIN
 # -----------------------------------------------------
-
-readczds('cloud')
-quit()
 
 pdoms = {}      # potential domains words; single english words and
                 # multi-word combos made up of 3 words or less
@@ -87,86 +87,85 @@ domains = {}    # pdoms with tlds
 TLDS = [
     'COM',
     'NET',
-    'CO',
+    #'CO',
     'ORG',
     'XYX',
     'IO',
     'ME',
     'INFO',
-    'IN',
+    #'IN',
     'TOP',
-    'EU',
-    'AI',
+    #'EU',
+    #'AI',
     'ONLINE',
-    'US',
+    #'US',
     'BIZ',
-    'GG',
+    #'GG',
     'TECH',
-    'TV',
-    'CC',
+    #'TV',
+    #'CC',
     'DEV',
     'CLUB',
     'APP',
-    'PW',
+    #'PW',
     'PRO',
     'SITE',
-    'CA',
+    #'CA',
     'SHOP',
-    'UK',
+    #'UK',
     'CO.UK',
-    'WIN',
+    #'WIN',
     'STORE',
     'SPACE',
     'DOWNLOAD',
-    'ES',
-    'IT',
+    #'ES',
+    #'IT',
     'WORK',
     'CLOUD',
     'LIVE',
-    'WS',
-    'RU',
-    'IM',
+    #'WS',
+    #'RU',
+    #'IM',
     'ONE',
     'LIFE',
-    'LINK',
-    'JP',
-    'DE',
-    'FR',
-    'BR',
-    'GOV',
-    'PL',
-    'AU',
-    'CN',
-    'NL',
-    'EDU',
-    'CH',
-    'ID',
-    'AT',
-    'KR',
-    'CZ',
-    'MX',
-    'BE',
-    'SE',
-    'TR',
-    'TW',
-    'AL',
-    'UA',
-    'IR',
-    'VN',
-    'CL',
-    'SK',
-    'LY',
-    'TO',
-    'NO',
-    'FI',
-    'PT'
+    'LINK'
+    #'JP',
+    #'DE',
+    #'FR',
+    #'BR',
+    #'GOV',
+    #'PL',
+    #'AU',
+    #'CN',
+    #'NL',
+    #'EDU',
+    #'CH',
+    #'ID',
+    #'AT',
+    #'KR',
+    #'CZ',
+    #'MX',
+    #'BE',
+    #'SE',
+    #'TR',
+    #'TW',
+    #'AL',
+    #'UA',
+    #'IR',
+    #'VN',
+    #'CL',
+    #'SK',
+    #'LY',
+    #'TO',
+    #'NO',
+    #'FI',
+    #'PT'
 ]
 
 # Read the word list
 with open("uniquewords_english.json", 'r') as f:
     wl_dict = json.loads(f.read())
-
-
+print ('Read wordlist')
 
 # single word domains
 print ('Calculating single word domains')
@@ -202,17 +201,28 @@ for x in wl_dict:
                 pdoms[w1 + '-' + w2 + '-' + w3] = []
 
 for t in TLDS:
+    print('Starting to calculate', t)
     domains = {}    # reset it for every tld; keep files smaller
+    domains['HEADER'] = ['ZoneCheckDate', 'ZoneCheckResults', 'PingCheckDate', 'PingCheckResults', 'WhoisCheckDate',\
+                         'Registrar', 'CreateDate', 'UpdateDate', 'ExprDate', 'Country']
+
+    czds = readczds(t)  # try to read the zones if they exist
+
     for d in pdoms:
         z = str(d)
         x = str(t).lower()
         domain = z + '.' + x
-        domains[domain] = ['PingCheckDate', 'PingCheckResults', 'WhoisCheckDate', 'Registrar', 'CreateDate',
-                         'UpdateDate', 'ExprDate', 'Country']
-        fn = x + '-exdb.json'
+        ZoneCheckDate = date.today().strftime('%Y-%m-%d')
+        ZoneCheckResults = domain in czds
+        if len(domain) > 0:
+            domains[domain] = [ZoneCheckDate, ZoneCheckResults, '', '', '', '', '', '', '', '']
+        else:
+            domains[domain] = ['', '', '', '', '', '', '', '', '', '']
 
+    fn = x + '.dict'
     with open(fn, 'w') as f:
         f.write(json.dumps(domains))
     print('Wrote TLD', t)
+
 
 
