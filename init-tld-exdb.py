@@ -11,6 +11,7 @@
 import json
 from os.path import exists
 from datetime import date
+import mysql.connector as SQL
 
 # -----------------------------------------------------
 # FUNCTIONS
@@ -49,6 +50,7 @@ def readczds(tld):
 
     # Initialize an empty dictionary that we can return no matter what
     dict = {}
+    xs = {}
 
     if exists(dfn):
         # get the dictionary if it has already been created previously
@@ -59,9 +61,15 @@ def readczds(tld):
         if exists(zfn):
             # If the zone dictionary doesn't already exist, try to create one
             # from the DNS zone file
+            print('READCZDS():  Creating zone file for', tld)
             with open(zfn, 'r') as f:
                 z = f.readlines()
+            print('READCZDS():  Raw data loaded')
+            dcnt = 0
             for x in z:
+                dcnt += 1
+                if dcnt/10000000 == int(dcnt/10000000):
+                    print('READCZDS(): Process progress', dcnt)
                 xs = x.replace('\t', ' ').split(' ')
                 if xs[0][-1:] == '.':
                     xs[0] = xs[0][:len(xs[0])-1]
@@ -82,84 +90,31 @@ pdoms = {}      # potential domains words; single english words and
                 # and whose length doesn't exceed 17 characters
 
 domains = {}    # pdoms with tlds
+components = {}
 
 # The top TLD's based on indexed pages and registrations
+# This list can be replaced with a query later
+# COM and NET are omitted because the zone files haven't been approved yet.
 TLDS = [
-    'COM',
-    'NET',
-    #'CO',
-    'ORG',
-    'XYX',
-    'IO',
-    'ME',
-    'INFO',
-    #'IN',
-    'TOP',
-    #'EU',
-    #'AI',
-    'ONLINE',
-    #'US',
-    'BIZ',
-    #'GG',
-    'TECH',
-    #'TV',
-    #'CC',
-    'DEV',
-    'CLUB',
-    'APP',
-    #'PW',
-    'PRO',
-    'SITE',
-    #'CA',
-    'SHOP',
-    #'UK',
-    'CO.UK',
-    #'WIN',
-    'STORE',
-    'SPACE',
-    'DOWNLOAD',
-    #'ES',
-    #'IT',
-    'WORK',
-    'CLOUD',
-    'LIVE',
-    #'WS',
-    #'RU',
-    #'IM',
-    'ONE',
-    'LIFE',
-    'LINK'
-    #'JP',
-    #'DE',
-    #'FR',
-    #'BR',
-    #'GOV',
-    #'PL',
-    #'AU',
-    #'CN',
-    #'NL',
-    #'EDU',
-    #'CH',
-    #'ID',
-    #'AT',
-    #'KR',
-    #'CZ',
-    #'MX',
-    #'BE',
-    #'SE',
-    #'TR',
-    #'TW',
-    #'AL',
-    #'UA',
-    #'IR',
-    #'VN',
-    #'CL',
-    #'SK',
-    #'LY',
-    #'TO',
-    #'NO',
-    #'FI',
-    #'PT'
+    'com',
+    'net',
+    'org',
+    'xyz',
+    'info',
+    'online',
+    'top',
+    'shop',
+    'wang',
+    'site',
+    'icu',
+    'store',
+    'cyou',
+    'club',
+    'vip',
+    'live',
+    'app',
+    'buzz',
+    'tech'
 ]
 
 # Read the word list
@@ -175,8 +130,10 @@ for w in wl_dict:
         pdoms[w1] = []     # all single words should be added
     for s in wl_dict[w]:
         ss = s.replace(' ', '')  # some synonyms have spaces in them
+        ss = s.replace("'", "")  # some synonyms have apostrophes that cause problems when inserting them
         if FilterDomain(ss, '', ''):
             pdoms[ss] = []
+            components[ss] = [w1]
 
 print ('Calculating double word domains')
 # two word domains whose length is less than 17 characters
@@ -187,6 +144,8 @@ for x in wl_dict:
         if FilterDomain(w1, w2, ''):
             pdoms[w1 + w2] = []
             pdoms[w1 + '-' + w2] = []
+            components[w1 + w2] = [w1, w2]
+            components[w1 + '-' + w2] = [w1, w2]
 
 print ('Calculating triple word domains')
 # three word domains whose length is less than 17 characters
@@ -199,14 +158,27 @@ for x in wl_dict:
             if FilterDomain(w1, w2, w3):
                 pdoms[w1 + w2 + w3] =  []
                 pdoms[w1 + '-' + w2 + '-' + w3] = []
+                components[w1 + w2 + w3] = [w1, w2, w3]
+                components[w1 + '-' + w2 + '-' + w3] = [w1, w2, w3]
+
+
+# write the wordlist components
+print('Writing component words')
+with open('componentwords_english.dict', 'w') as f:
+    f.write(json.dumps(components))
+components = None   # purposefully releasing memory
+print ('Wrote component words; releasing memory.')
 
 for t in TLDS:
     print('Starting to calculate', t)
+    dcnt = 0  # domain counter
+    domains = None  # Release the memory to avoid limits
     domains = {}    # reset it for every tld; keep files smaller
     domains['HEADER'] = ['ZoneCheckDate', 'ZoneCheckResults', 'PingCheckDate', 'PingCheckResults', 'WhoisCheckDate',\
                          'Registrar', 'CreateDate', 'UpdateDate', 'ExprDate', 'Country']
 
     czds = readczds(t)  # try to read the zones if they exist
+    print ('Zone file read for', t)
 
     for d in pdoms:
         z = str(d)
@@ -215,11 +187,16 @@ for t in TLDS:
         ZoneCheckDate = date.today().strftime('%Y-%m-%d')
         ZoneCheckResults = domain in czds
         if len(domain) > 0:
+            # domain exits in czds
             domains[domain] = [ZoneCheckDate, ZoneCheckResults, '', '', '', '', '', '', '', '']
         else:
+            # zone doesn't exist in czds
             domains[domain] = ['', '', '', '', '', '', '', '', '', '']
+        dcnt += 1
+        if dcnt/100000 == int(dcnt/100000):
+            print ('Progress for', tld, dcnt/len(pdoms))
 
-    fn = x + '.dict'
+    fn = t + '.dict'
     with open(fn, 'w') as f:
         f.write(json.dumps(domains))
     print('Wrote TLD', t)
